@@ -7,6 +7,7 @@ model = "composer-2.5"
 show_tools = true
 session_name = "default"
 mode = "plan"  # default mode for `chat --start-mode`
+# lean = true  # same as always passing --lean (project rules only, no CodeGraph MCP)
 
 [model]
 id = "composer-2.5"

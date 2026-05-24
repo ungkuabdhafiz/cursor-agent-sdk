@@ -12,6 +12,7 @@ from cursor_agent_sdk import __version__
 from cursor_agent_sdk.codegraph import inspect_status, run_init
 from cursor_agent_sdk.completion import completion_script
 from cursor_agent_sdk.config import ToolConfig, load_config, require_api_key
+from cursor_agent_sdk.lean import apply_lean, emit_lean_banner, warn_lean_session_resume
 from cursor_agent_sdk.errors import format_error, format_error_hint
 from cursor_agent_sdk.session import (
     SessionCwdMismatchError,
@@ -88,6 +89,14 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
         "--json",
         action="store_true",
         help="Emit NDJSON events during the run and a final JSON result",
+    )
+    parser.add_argument(
+        "--lean",
+        action="store_true",
+        help=(
+            "Token-efficient defaults: project rules only, CodeGraph MCP off, "
+            "plan-first; warns when resuming long sessions"
+        ),
     )
     codegraph_group = parser.add_mutually_exclusive_group()
     codegraph_group.add_argument(
@@ -222,7 +231,7 @@ def resolve_config(args: argparse.Namespace, cwd: Path) -> ToolConfig:
     elif getattr(args, "codegraph", None):
         codegraph = True
 
-    return config.merge_cli(
+    merged = config.merge_cli(
         model_id=args.model,
         fast=fast,
         show_tools=show_tools,
@@ -231,6 +240,20 @@ def resolve_config(args: argparse.Namespace, cwd: Path) -> ToolConfig:
         rules=args.rules,
         sandbox=sandbox,
         codegraph=codegraph,
+        lean=True if getattr(args, "lean", False) else None,
+    )
+
+    use_lean = bool(getattr(args, "lean", False)) or merged.lean
+    if not use_lean:
+        return merged
+
+    codegraph_explicit = bool(
+        getattr(args, "no_codegraph", False) or getattr(args, "codegraph", False)
+    )
+    return apply_lean(
+        merged,
+        rules_explicit=args.rules is not None,
+        codegraph_explicit=codegraph_explicit,
     )
 
 
@@ -280,8 +303,23 @@ def main(argv: list[str] | None = None) -> None:
     json_mode = bool(args.json)
     session_name = config.session_name
 
+    if config.lean and not json_mode and args.command not in (
+        "projects",
+        "sessions",
+        "session",
+        "clear",
+        "completion",
+    ):
+        emit_lean_banner(config)
+
     try:
         if args.command == "chat":
+            warn_lean_session_resume(
+                cwd,
+                session_name,
+                lean=config.lean,
+                force_new=args.new,
+            )
             start_mode = args.start_mode or config.default_mode
             code = run_chat(
                 cwd,
@@ -345,6 +383,12 @@ def main(argv: list[str] | None = None) -> None:
             session_name=session_name,
         ) as tool:
             if args.command == "plan":
+                warn_lean_session_resume(
+                    cwd,
+                    session_name,
+                    lean=config.lean,
+                    force_new=args.new,
+                )
                 prompt = read_prompt_arg(args.prompt)
                 if args.new:
                     tool.open_new(mode="plan")
@@ -357,6 +401,12 @@ def main(argv: list[str] | None = None) -> None:
                 raise SystemExit(tool.send(prompt, mode="plan"))
 
             if args.command == "ask":
+                warn_lean_session_resume(
+                    cwd,
+                    session_name,
+                    lean=config.lean,
+                    force_new=args.new,
+                )
                 prompt = read_prompt_arg(args.prompt)
                 if args.new:
                     tool.open_new(mode="agent")
@@ -369,6 +419,12 @@ def main(argv: list[str] | None = None) -> None:
                 raise SystemExit(tool.send(prompt, mode="agent"))
 
             if args.command == "send":
+                warn_lean_session_resume(
+                    cwd,
+                    session_name,
+                    lean=config.lean,
+                    force_new=False,
+                )
                 prompt = read_prompt_arg(args.prompt)
                 tool.open_existing()
                 raise SystemExit(tool.send(prompt, mode=args.mode))

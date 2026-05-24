@@ -50,6 +50,7 @@ class ToolConfig:
     sandbox_enabled: bool | None = None
     mcp_servers: dict[str, McpServerConfig] = field(default_factory=dict)
     codegraph: CodeGraphSettings = field(default_factory=CodeGraphSettings)
+    lean: bool = False
 
     def merge_cli(
         self,
@@ -62,6 +63,7 @@ class ToolConfig:
         rules: SequenceSettingSources | None = None,
         sandbox: bool | None = None,
         codegraph: bool | None = None,
+        lean: bool | None = None,
     ) -> ToolConfig:
         sources = self.setting_sources
         if rules is not None:
@@ -86,6 +88,7 @@ class ToolConfig:
             sandbox_enabled=sandbox if sandbox is not None else self.sandbox_enabled,
             mcp_servers=dict(self.mcp_servers),
             codegraph=codegraph_settings,
+            lean=self.lean if lean is None else lean,
         )
 
 
@@ -153,6 +156,7 @@ def _config_from_mapping(data: Mapping[str, Any]) -> ToolConfig:
         default_mode = "plan"
 
     session_name = str(defaults.get("session_name", "default"))
+    lean = _optional_bool(defaults.get("lean")) or False
     setting_sources = _parse_setting_sources(local_section.get("setting_sources"))
     sandbox_enabled = _optional_bool(local_section.get("sandbox_enabled"))
 
@@ -172,6 +176,7 @@ def _config_from_mapping(data: Mapping[str, Any]) -> ToolConfig:
         sandbox_enabled=sandbox_enabled,
         mcp_servers=mcp_servers,
         codegraph=codegraph,
+        lean=lean,
     )
 
 
@@ -212,6 +217,7 @@ def _apply_env(config: ToolConfig) -> ToolConfig:
         sandbox_enabled=config.sandbox_enabled,
         mcp_servers=config.mcp_servers,
         codegraph=codegraph,
+        lean=config.lean,
     )
 
 

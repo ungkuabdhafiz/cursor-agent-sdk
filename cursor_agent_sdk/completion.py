@@ -36,8 +36,8 @@ _cursor_agent_sdk() {{
     cword=$COMP_CWORD
 
     local commands="{subs}"
-    local global_opts="--cwd --fast --no-tools --verbose --json"
-    local global_opts_extra="--model --session --rules --sandbox --help"
+    local global_opts="--cwd --fast --no-tools --verbose --json --lean"
+    local global_opts_extra="--model --session --rules --sandbox --codegraph --no-codegraph --help"
 
     if [[ $cword -eq 1 && "$cur" == -* ]]; then
         COMPREPLY=( $(compgen -W "$global_opts $global_opts_extra" -- "$cur") )
@@ -74,6 +74,9 @@ global_opts=(
     '--no-tools[Hide tool call lines]'
     '--verbose[Print metadata on stderr]'
     '--json[Machine-readable JSON output]'
+    '--lean[Token-efficient defaults]'
+    '--codegraph[Enable CodeGraph MCP]'
+    '--no-codegraph[Disable CodeGraph MCP]'
     '--model[Model id]'
     '--session[Named session]'
     '--rules[Setting sources: project user team]'

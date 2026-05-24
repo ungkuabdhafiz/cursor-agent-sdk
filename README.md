@@ -120,10 +120,36 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `--json` | NDJSON stream + final JSON result (for scripts/CI) |
 | `--no-tools` | Hide `[tool]` lines in output |
 | `--verbose` | Metadata on stderr; full tool `args`/`result` repr (default shows path/pattern/cmd) |
+| `--lean` | Token-efficient defaults (see below) |
 | `--codegraph` | Enable CodeGraph MCP for the working directory (default) |
 | `--no-codegraph` | Disable automatic CodeGraph MCP injection |
 | `--new` | Force a fresh SDK session (`plan` / `ask` / `chat`) |
 | `--mode plan\|agent` | Override mode for a `send` follow-up |
+
+### Lean mode (`--lean`)
+
+Use when you want usage closer to a tight official CLI run — less context loaded up front:
+
+| Setting | Default | With `--lean` |
+|---------|---------|----------------|
+| Rules | From config (often project + user) | **Project only** (`--rules` still overrides) |
+| CodeGraph MCP | On when `codegraph` binary exists | **Off** (use `--codegraph` to enable) |
+| Default chat mode | `plan` | `plan` (unchanged) |
+| Session resume | Silent | **Warns** — context grows each turn |
+
+```bash
+# One-shot, scoped task
+cursor-agent-sdk --lean --new --cwd ./src/auth plan "Add JWT middleware only"
+
+# Enable CodeGraph only when it saves tool calls
+cursor-agent-sdk --lean --codegraph plan "Where is refresh_token defined?"
+
+# Make lean the default globally (~/.cursor-agent-sdk/config.toml)
+# [defaults]
+# lean = true
+```
+
+Recommended workflow: **`plan` → review → `send --mode agent` → `--new` for the next task**.
 
 ## Multi-turn sessions
 
