@@ -9,6 +9,7 @@ from typing import Literal
 
 from cursor_sdk import Agent, CursorAgentError, CursorClient, SendOptions
 
+from cursor_agent_sdk.chat_input import read_chat_input
 from cursor_agent_sdk.config import ToolConfig, build_agent_options, require_api_key
 from cursor_agent_sdk.output import print_run_summary, stream_run
 from cursor_agent_sdk.session import (
@@ -278,7 +279,8 @@ def run_chat(
     if not json_mode:
         print(
             "Interactive Cursor SDK session.\n"
-            "Commands: /plan, /agent, /new, /session, /clear, /help, /quit\n",
+            "Commands: /plan, /agent, /new, /session, /clear, /paste, /help, /quit\n"
+            "Multiline: paste directly, or type /paste and end with a lone '.'\n",
             file=sys.stderr,
         )
 
@@ -310,12 +312,18 @@ def run_chat(
 
         while True:
             try:
-                prompt = input("cursor-agent-sdk> ").strip()
-            except (EOFError, KeyboardInterrupt):
+                raw = read_chat_input()
+            except KeyboardInterrupt:
                 if not json_mode:
                     print(file=sys.stderr)
                 break
 
+            if raw is None:
+                if not json_mode:
+                    print(file=sys.stderr)
+                break
+
+            prompt = raw.strip()
             if not prompt:
                 continue
 
@@ -406,12 +414,17 @@ def _print_help() -> None:
         "  Start with /plan, ask for a proposal, then /agent and ask to implement.\n"
         "\n"
         "Commands:\n"
-        "  /plan     Switch to plan mode for the next message\n"
-        "  /agent    Switch to agent mode for the next message\n"
-        "  /new      Start a fresh SDK session\n"
-        "  /clear    Clear saved session and start fresh\n"
-        "  /session  Show saved session for this project\n"
-        "  /quit     Exit\n",
+        "  /plan       Switch to plan mode for the next message\n"
+        "  /agent      Switch to agent mode for the next message\n"
+        "  /new        Start a fresh SDK session\n"
+        "  /clear      Clear saved session and start fresh\n"
+        "  /session    Show saved session for this project\n"
+        "  /paste      Enter multiline mode (end with a lone '.' on its own line)\n"
+        "  /multiline  Alias for /paste\n"
+        "  /quit       Exit\n"
+        "\n"
+        "Multiline paste:\n"
+        "  Paste multiple lines directly at the prompt (most terminals), or use /paste.\n",
         file=sys.stderr,
     )
 

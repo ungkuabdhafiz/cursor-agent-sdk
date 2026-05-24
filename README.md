@@ -77,6 +77,19 @@ cursor-agent-sdk> /clear
 cursor-agent-sdk> /quit
 ```
 
+### Multiline prompts in chat
+
+Paste several lines directly at the `cursor-agent-sdk>` prompt (most terminals send the full paste at once). For long prompts or finicky terminals, use `/paste`:
+
+```
+cursor-agent-sdk> /paste
+Multiline input — paste your text, then type a lone '.' on its own line to send.
+... Feature A should:
+... - add OAuth login
+... - use JWT sessions
+... .
+```
+
 ## Commands
 
 | Command | Description |
