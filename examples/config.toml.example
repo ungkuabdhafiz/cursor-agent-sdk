@@ -1,5 +1,5 @@
-# Copy to .cursor-agent-sdk/config.toml in your project, or
-# ~/.config/cursor-agent-sdk/config.toml for global defaults.
+# Copy to ~/.cursor-agent-sdk/config.toml for global defaults.
+# Optional per-repo override: <project>/.cursor-agent-sdk/config.toml
 
 [defaults]
 fast = false

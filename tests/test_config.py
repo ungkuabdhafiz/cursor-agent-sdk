@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from cursor_agent_sdk.config import load_config
+from cursor_agent_sdk.config import load_config, user_config_path
 
 
-def test_load_project_config(tmp_path: Path, monkeypatch) -> None:
+def test_load_home_config(isolated_home: Path, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    config_dir = tmp_path / ".cursor-agent-sdk"
-    config_dir.mkdir()
-    (config_dir / "config.toml").write_text(
+    config_dir = user_config_path().parent
+    config_dir.mkdir(parents=True)
+    user_config_path().write_text(
         """
 [defaults]
 fast = true
@@ -27,3 +27,4 @@ sandbox_enabled = true
     assert config.session_name == "work"
     assert config.setting_sources == ("project", "user")
     assert config.sandbox_enabled is True
+

@@ -5,6 +5,13 @@ import pytest
 from cursor_agent_sdk.cli import main
 
 
+def test_version(capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert "cursor-agent-sdk" in capsys.readouterr().out
+
+
 def test_help_exits_zero() -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--help"])

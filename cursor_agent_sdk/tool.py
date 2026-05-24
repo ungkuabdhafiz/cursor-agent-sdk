@@ -14,9 +14,12 @@ from cursor_agent_sdk.output import print_run_summary, stream_run
 from cursor_agent_sdk.session import (
     ProjectSession,
     SessionCwdMismatchError,
+    append_chat_log,
+    chat_history_path,
     clear_session,
     list_sessions,
     load_session,
+    project_store_dir,
     save_session,
     validate_session_cwd,
 )
@@ -155,6 +158,14 @@ class AgentTool:
             json_mode=self.json_mode,
             agent_id=self._agent.agent_id,
             run_id=run.id,
+        )
+
+        append_chat_log(
+            self.cwd,
+            prompt=prompt,
+            mode=send_mode,
+            status=result.status,
+            agent_id=self._agent.agent_id,
         )
 
         if result.status == "error":
@@ -352,9 +363,7 @@ def _setup_readline(cwd: Path) -> None:
     except ImportError:
         return
 
-    from cursor_agent_sdk.session import session_dir
-
-    histfile = session_dir(cwd) / "history"
+    histfile = chat_history_path(cwd)
     try:
         histfile.parent.mkdir(parents=True, exist_ok=True)
         readline.read_history_file(histfile)
@@ -397,6 +406,7 @@ def _print_session(cwd: Path, session_name: str) -> None:
 
     print(f"Agent ID: {session.agent_id}", file=sys.stderr)
     print(f"Project: {session.cwd}", file=sys.stderr)
+    print(f"Store: {project_store_dir(cwd)}", file=sys.stderr)
     print(f"Session: {session.session_name}", file=sys.stderr)
     print(f"Created: {session.created_at}", file=sys.stderr)
     print(f"Updated: {session.updated_at}", file=sys.stderr)

@@ -12,9 +12,12 @@ from typing import Any, Literal
 from cursor_sdk import HttpMcpServerConfig, SandboxOptions, StdioMcpServerConfig
 from cursor_sdk.types import McpServerConfig, SettingSource
 
-from cursor_agent_sdk.session import session_dir
+from cursor_agent_sdk.session import home_dir
 
 SettingSourceInput = SettingSource | str
+
+# Optional per-repo overrides (committed or local); sessions live in home_dir().
+PROJECT_CONFIG_DIRNAME = ".cursor-agent-sdk"
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -23,8 +26,15 @@ else:
 
 
 DEFAULT_MODEL_ID = "composer-2.5"
-USER_CONFIG_PATH = Path.home() / ".config" / "cursor-agent-sdk" / "config.toml"
 PROJECT_CONFIG_NAME = "config.toml"
+
+
+def user_config_path() -> Path:
+    return home_dir() / PROJECT_CONFIG_NAME
+
+
+def project_config_path(cwd: Path) -> Path:
+    return cwd.resolve() / PROJECT_CONFIG_DIRNAME / PROJECT_CONFIG_NAME
 
 
 @dataclass
@@ -70,10 +80,10 @@ SequenceSettingSources = list[SettingSourceInput] | tuple[SettingSourceInput, ..
 
 
 def config_search_paths(cwd: Path) -> list[Path]:
-    """Later paths override earlier ones (project overrides user)."""
+    """Later paths override earlier ones (repo overrides home)."""
     return [
-        USER_CONFIG_PATH,
-        session_dir(cwd) / PROJECT_CONFIG_NAME,
+        user_config_path(),
+        project_config_path(cwd),
     ]
 
 

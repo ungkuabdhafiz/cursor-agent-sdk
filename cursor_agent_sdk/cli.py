@@ -8,10 +8,17 @@ from pathlib import Path
 
 from cursor_sdk import CursorAgentError
 
+from cursor_agent_sdk import __version__
 from cursor_agent_sdk.completion import completion_script
 from cursor_agent_sdk.config import ToolConfig, load_config
 from cursor_agent_sdk.errors import format_error, format_error_hint
-from cursor_agent_sdk.session import SessionCwdMismatchError, load_session
+from cursor_agent_sdk.session import (
+    SessionCwdMismatchError,
+    home_dir,
+    list_projects,
+    load_session,
+    project_store_dir,
+)
 from cursor_agent_sdk.tool import (
     AgentTool,
     clear_project_session,
@@ -47,7 +54,7 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session",
         metavar="NAME",
-        help="Named session (stored under .cursor-agent-sdk/sessions/)",
+        help="Named session (under ~/.cursor-agent-sdk/projects/<id>/sessions/)",
     )
     parser.add_argument(
         "--rules",
@@ -90,6 +97,11 @@ def build_parser() -> argparse.ArgumentParser:
             "Delegate coding tasks to a Cursor SDK agent for the current project. "
             "Use plan mode to get suggestions, then send follow-ups to implement them."
         ),
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     global_arguments(parser)
 
@@ -139,6 +151,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     sessions_cmd = subparsers.add_parser("sessions", help="List named sessions for this project")
     global_arguments(sessions_cmd)
+
+    projects_cmd = subparsers.add_parser(
+        "projects",
+        help="List all projects with saved sessions under ~/.cursor-agent-sdk",
+    )
+    global_arguments(projects_cmd)
 
     clear = subparsers.add_parser("clear", help="Delete the saved session file for this project")
     global_arguments(clear)
@@ -232,6 +250,8 @@ def main(argv: list[str] | None = None) -> None:
                 raise SystemExit(1)
             print(f"Agent ID: {session.agent_id}")
             print(f"Project: {session.cwd}")
+            print(f"Store: {project_store_dir(cwd)}")
+            print(f"Home: {home_dir()}")
             print(f"Session: {session.session_name}")
             print(f"Version: {session.version}")
             print(f"Created: {session.created_at}")
@@ -246,6 +266,17 @@ def main(argv: list[str] | None = None) -> None:
                 raise SystemExit(1)
             for name in names:
                 print(name)
+            raise SystemExit(0)
+
+        if args.command == "projects":
+            entries = list_projects()
+            if not entries:
+                print(f"No projects yet under {home_dir()}.", file=sys.stderr)
+                raise SystemExit(1)
+            for entry in entries:
+                names = list_project_sessions(Path(entry.cwd))
+                label = ", ".join(names) if names else "(no sessions)"
+                print(f"{entry.cwd}\t{label}\tupdated {entry.updated_at}")
             raise SystemExit(0)
 
         if args.command == "clear":

@@ -86,7 +86,8 @@ cursor-agent-sdk> /quit
 | `send PROMPT` | Send a follow-up in the saved session |
 | `chat` | Interactive multi-turn REPL (resumes saved session) |
 | `session` | Show the saved agent ID for this project |
-| `sessions` | List named sessions |
+| `sessions` | List named sessions for the current project |
+| `projects` | List all projects with saved sessions (home store) |
 | `resume AGENT_ID [PROMPT]` | Resume a specific agent |
 | `clear` | Delete the saved session file |
 | `completion SHELL` | Print shell completion (`bash` or `zsh`) |
@@ -96,7 +97,7 @@ cursor-agent-sdk> /quit
 | Flag | Description |
 |------|-------------|
 | `--cwd PATH` | Target project directory (default: current directory) |
-| `--session NAME` | Named session (`.cursor-agent-sdk/sessions/NAME.json`) |
+| `--session NAME` | Named session (under `~/.cursor-agent-sdk/projects/<id>/`) |
 | `--model ID` | Model id (default: `composer-2.5`) |
 | `--fast` / `--no-fast` | Composer fast vs standard tier |
 | `--rules SOURCE ...` | Setting sources: `project`, `user`, `team`, etc. |
@@ -109,14 +110,29 @@ cursor-agent-sdk> /quit
 
 ## Multi-turn sessions
 
-Each project stores session state under `.cursor-agent-sdk/`:
+All session data lives under **`~/.cursor-agent-sdk/`** (like Cursor’s `~/.cursor/`), keyed by project path:
 
-- Default session: `.cursor-agent-sdk/session.json`
-- Named sessions: `.cursor-agent-sdk/sessions/NAME.json`
+```
+~/.cursor-agent-sdk/
+├── config.toml              # global defaults
+└── projects/
+    └── <sha256-of-project-path>/
+        ├── meta.json        # project cwd and timestamps
+        ├── session.json     # default session (agent id, mode, …)
+        ├── sessions/        # named sessions (e.g. auth.json)
+        ├── history          # interactive chat readline history
+        └── chat.jsonl       # log of prompts and run status
+```
 
-Existing `.cursor-agent/` directories are renamed automatically on first use.
+Repo-local `.cursor-agent-sdk/` or `.cursor-agent/` folders are **moved** into the home store on first use.
 
-Sessions include a schema `version`, file locking on read/write, and cwd validation on resume.
+Sessions include schema versioning, file locking, and cwd validation on resume.
+
+List every project you’ve used:
+
+```bash
+cursor-agent-sdk projects
+```
 
 ```bash
 cursor-agent-sdk --cwd ~/projects/my-app --session auth plan "Add login"
@@ -127,8 +143,8 @@ cursor-agent-sdk --cwd ~/projects/my-app --session auth send --mode agent "Imple
 
 Config is merged from (later overrides earlier):
 
-1. `~/.config/cursor-agent-sdk/config.toml` (user defaults)
-2. `.cursor-agent-sdk/config.toml` in the project (per-repo overrides)
+1. `~/.cursor-agent-sdk/config.toml` (user defaults)
+2. `<project>/.cursor-agent-sdk/config.toml` (optional per-repo overrides)
 
 See [examples/config.toml.example](examples/config.toml.example).
 
@@ -191,7 +207,7 @@ cursor-agent-sdk/
 ├── cursor_agent_sdk/
 │   ├── cli.py          # Argument parsing
 │   ├── tool.py         # Agent create / resume / send / chat
-│   ├── session.py      # Persistence, locking, named sessions
+│   ├── session.py      # Home-dir persistence, locking, named sessions
 │   ├── config.py       # TOML + env configuration
 │   ├── output.py       # Streaming and JSON output
 │   ├── errors.py       # Actionable error hints

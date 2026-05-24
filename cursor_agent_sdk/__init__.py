@@ -1,12 +1,19 @@
 """CLI and library for multi-turn Cursor SDK agent sessions."""
 
-from cursor_agent_sdk.config import ToolConfig, load_config
+from cursor_agent_sdk.config import ToolConfig, load_config, user_config_path
 from cursor_agent_sdk.session import (
+    ProjectMeta,
     ProjectSession,
     SessionCwdMismatchError,
+    append_chat_log,
+    chat_history_path,
+    chat_log_path,
     clear_session,
+    home_dir,
+    list_projects,
     list_sessions,
     load_session,
+    project_store_dir,
     save_session,
     session_file,
 )
@@ -17,13 +24,21 @@ __version__ = "0.2.0"
 __all__ = [
     "__version__",
     "AgentTool",
+    "ProjectMeta",
     "ProjectSession",
     "SessionCwdMismatchError",
     "ToolConfig",
+    "append_chat_log",
+    "chat_history_path",
+    "chat_log_path",
     "clear_session",
+    "home_dir",
+    "list_projects",
     "list_sessions",
     "load_config",
     "load_session",
+    "project_store_dir",
     "save_session",
     "session_file",
+    "user_config_path",
 ]

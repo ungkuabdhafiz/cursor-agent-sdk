@@ -10,6 +10,7 @@ SUBCOMMANDS = (
     "resume",
     "session",
     "sessions",
+    "projects",
     "clear",
     "completion",
 )
