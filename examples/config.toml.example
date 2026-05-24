@@ -1,4 +1,4 @@
-# Copy to .cursor-agent/config.toml in your project, or
+# Copy to .cursor-agent-sdk/config.toml in your project, or
 # ~/.config/cursor-agent-sdk/config.toml for global defaults.
 
 [defaults]

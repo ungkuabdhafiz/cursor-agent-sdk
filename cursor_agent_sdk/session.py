@@ -10,7 +10,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-SESSION_DIR = ".cursor-agent"
+SESSION_DIR = ".cursor-agent-sdk"
+LEGACY_SESSION_DIR = ".cursor-agent"
 SESSION_FILE = "session.json"
 SESSIONS_SUBDIR = "sessions"
 SESSION_VERSION = 1
@@ -53,7 +54,16 @@ class ProjectSession:
 
 
 def session_dir(cwd: Path) -> Path:
-    return cwd.resolve() / SESSION_DIR
+    """Return the per-project data directory, migrating legacy `.cursor-agent` if present."""
+    root = cwd.resolve()
+    new_dir = root / SESSION_DIR
+    legacy_dir = root / LEGACY_SESSION_DIR
+    if not new_dir.exists() and legacy_dir.exists():
+        try:
+            legacy_dir.rename(new_dir)
+        except OSError:
+            return legacy_dir
+    return new_dir
 
 
 def session_file(cwd: Path, session_name: str = "default") -> Path:

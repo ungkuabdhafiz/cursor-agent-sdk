@@ -5,7 +5,7 @@ from cursor_agent_sdk.config import load_config
 
 def test_load_project_config(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    config_dir = tmp_path / ".cursor-agent"
+    config_dir = tmp_path / ".cursor-agent-sdk"
     config_dir.mkdir()
     (config_dir / "config.toml").write_text(
         """

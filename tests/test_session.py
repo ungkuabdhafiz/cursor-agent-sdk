@@ -32,7 +32,10 @@ def test_session_roundtrip(tmp_path: Path) -> None:
 
 
 def test_named_session_path(tmp_path: Path) -> None:
-    assert session_file(tmp_path, "auth") == tmp_path / ".cursor-agent" / "sessions" / "auth.json"
+    assert (
+        session_file(tmp_path, "auth")
+        == tmp_path / ".cursor-agent-sdk" / "sessions" / "auth.json"
+    )
 
 
 def test_load_corrupt_json(tmp_path: Path) -> None:
@@ -69,6 +72,20 @@ def test_list_sessions(tmp_path: Path) -> None:
     names = list_sessions(tmp_path)
     assert "default" in names
     assert "auth" in names
+
+
+def test_migrate_legacy_session_dir(tmp_path: Path) -> None:
+    legacy = tmp_path / ".cursor-agent"
+    legacy.mkdir()
+    (legacy / "session.json").write_text(
+        '{"agent_id": "agent-legacy", "cwd": "' + str(tmp_path) + '"}',
+        encoding="utf-8",
+    )
+    loaded = load_session(tmp_path)
+    assert loaded is not None
+    assert loaded.agent_id == "agent-legacy"
+    assert (tmp_path / ".cursor-agent-sdk").is_dir()
+    assert not legacy.exists()
 
 
 def test_validate_session_cwd_mismatch(tmp_path: Path) -> None:

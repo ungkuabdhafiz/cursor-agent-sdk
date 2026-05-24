@@ -4,4 +4,5 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.cursor-agent-sdk/
 .cursor-agent/

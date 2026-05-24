@@ -47,7 +47,7 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session",
         metavar="NAME",
-        help="Named session (stored under .cursor-agent/sessions/)",
+        help="Named session (stored under .cursor-agent-sdk/sessions/)",
     )
     parser.add_argument(
         "--rules",

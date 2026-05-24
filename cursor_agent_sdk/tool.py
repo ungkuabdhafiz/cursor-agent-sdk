@@ -352,7 +352,9 @@ def _setup_readline(cwd: Path) -> None:
     except ImportError:
         return
 
-    histfile = cwd / ".cursor-agent" / "history"
+    from cursor_agent_sdk.session import session_dir
+
+    histfile = session_dir(cwd) / "history"
     try:
         histfile.parent.mkdir(parents=True, exist_ok=True)
         readline.read_history_file(histfile)

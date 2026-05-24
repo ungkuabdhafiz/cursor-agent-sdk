@@ -96,7 +96,7 @@ cursor-agent-sdk> /quit
 | Flag | Description |
 |------|-------------|
 | `--cwd PATH` | Target project directory (default: current directory) |
-| `--session NAME` | Named session (`.cursor-agent/sessions/NAME.json`) |
+| `--session NAME` | Named session (`.cursor-agent-sdk/sessions/NAME.json`) |
 | `--model ID` | Model id (default: `composer-2.5`) |
 | `--fast` / `--no-fast` | Composer fast vs standard tier |
 | `--rules SOURCE ...` | Setting sources: `project`, `user`, `team`, etc. |
@@ -109,10 +109,12 @@ cursor-agent-sdk> /quit
 
 ## Multi-turn sessions
 
-Each project stores session state under `.cursor-agent/`:
+Each project stores session state under `.cursor-agent-sdk/`:
 
-- Default session: `.cursor-agent/session.json`
-- Named sessions: `.cursor-agent/sessions/NAME.json`
+- Default session: `.cursor-agent-sdk/session.json`
+- Named sessions: `.cursor-agent-sdk/sessions/NAME.json`
+
+Existing `.cursor-agent/` directories are renamed automatically on first use.
 
 Sessions include a schema `version`, file locking on read/write, and cwd validation on resume.
 
@@ -126,7 +128,7 @@ cursor-agent-sdk --cwd ~/projects/my-app --session auth send --mode agent "Imple
 Config is merged from (later overrides earlier):
 
 1. `~/.config/cursor-agent-sdk/config.toml` (user defaults)
-2. `.cursor-agent/config.toml` in the project (per-repo overrides)
+2. `.cursor-agent-sdk/config.toml` in the project (per-repo overrides)
 
 See [examples/config.toml.example](examples/config.toml.example).
 

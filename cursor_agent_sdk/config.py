@@ -12,6 +12,8 @@ from typing import Any, Literal
 from cursor_sdk import HttpMcpServerConfig, SandboxOptions, StdioMcpServerConfig
 from cursor_sdk.types import McpServerConfig, SettingSource
 
+from cursor_agent_sdk.session import session_dir
+
 SettingSourceInput = SettingSource | str
 
 if sys.version_info >= (3, 11):
@@ -71,7 +73,7 @@ def config_search_paths(cwd: Path) -> list[Path]:
     """Later paths override earlier ones (project overrides user)."""
     return [
         USER_CONFIG_PATH,
-        cwd.resolve() / ".cursor-agent" / PROJECT_CONFIG_NAME,
+        session_dir(cwd) / PROJECT_CONFIG_NAME,
     ]
 
 
