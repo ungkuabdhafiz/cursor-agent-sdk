@@ -33,8 +33,8 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--cwd",
         type=Path,
-        default=Path.cwd(),
-        help="Project directory the SDK agent should work in (default: current directory)",
+        default=None,
+        help="Project directory (default: your current working directory)",
     )
     parser.add_argument(
         "--fast",
@@ -250,7 +250,7 @@ def main(argv: list[str] | None = None) -> None:
         print(completion_script(args.shell))
         raise SystemExit(0)
 
-    cwd = args.cwd.resolve()
+    cwd = (args.cwd or Path.cwd()).resolve()
     if not cwd.is_dir():
         print(f"error: --cwd is not a directory: {cwd}", file=sys.stderr)
         raise SystemExit(1)

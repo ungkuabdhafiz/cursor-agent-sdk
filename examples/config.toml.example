@@ -16,7 +16,7 @@ fast = false
 setting_sources = ["project", "user"]
 sandbox_enabled = false
 
-# CodeGraph MCP (enabled by default; auto-injects for --cwd)
+# CodeGraph MCP (enabled by default; uses your current directory when you run the CLI)
 [codegraph]
 enabled = true
 # command = "/full/path/to/codegraph"  # optional; defaults to PATH / CODEGRAPH_BIN

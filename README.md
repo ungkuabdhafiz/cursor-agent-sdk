@@ -103,7 +103,7 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `projects` | List all projects with saved sessions (home store) |
 | `resume AGENT_ID [PROMPT]` | Resume a specific agent |
 | `clear` | Delete the saved session file |
-| `codegraph status` | Show CodeGraph binary and index status for `--cwd` |
+| `codegraph status` | Show CodeGraph binary and index status for the current directory |
 | `codegraph init` | Run `codegraph init -i` in the target project |
 | `completion SHELL` | Print shell completion (`bash` or `zsh`) |
 
@@ -120,7 +120,7 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `--json` | NDJSON stream + final JSON result (for scripts/CI) |
 | `--no-tools` | Hide `[tool]` lines in output |
 | `--verbose` | Metadata on stderr; full tool `args`/`result` repr (default shows path/pattern/cmd) |
-| `--codegraph` | Enable CodeGraph MCP for `--cwd` (default) |
+| `--codegraph` | Enable CodeGraph MCP for the working directory (default) |
 | `--no-codegraph` | Disable automatic CodeGraph MCP injection |
 | `--new` | Force a fresh SDK session (`plan` / `ask` / `chat`) |
 | `--mode plan\|agent` | Override mode for a `send` follow-up |
@@ -175,23 +175,22 @@ See [examples/config.toml.example](examples/config.toml.example).
 
 ## CodeGraph
 
-CodeGraph is **enabled by default**. The CLI injects a stdio MCP server pointed at `--cwd`:
-
-```text
-codegraph serve --mcp --path <your-project>
-```
-
-No manual `.cursor/mcp.json` or `${workspaceFolder}` setup is required when using `cursor-agent-sdk`.
+CodeGraph is **enabled by default**. Run `cursor-agent-sdk` from the project you want indexed — no `--cwd` or path flags needed:
 
 ```bash
-# Check binary + index for a project
-cursor-agent-sdk codegraph status --cwd ~/projects/my-app
+cd ~/projects/my-app
 
-# Build the index once per repo
-cursor-agent-sdk codegraph init --cwd ~/projects/my-app
+cursor-agent-sdk codegraph status
+cursor-agent-sdk codegraph init
+cursor-agent-sdk plan "Where is auth handled?"
+```
 
-# Agent runs with codegraph_* tools automatically
-cursor-agent-sdk --cwd ~/projects/my-app plan "Where is auth handled?"
+The CLI starts CodeGraph as an MCP server in that directory (`codegraph serve --mcp`), aligned with the SDK agent's working directory. You do not need `.cursor/mcp.json` or `${workspaceFolder}`.
+
+To target a different directory without `cd`:
+
+```bash
+cursor-agent-sdk --cwd ~/projects/other-app plan "..."
 ```
 
 Disable per run:

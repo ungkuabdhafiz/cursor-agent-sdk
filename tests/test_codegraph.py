@@ -18,10 +18,11 @@ def test_is_index_initialized(tmp_path: Path) -> None:
     assert is_index_initialized(tmp_path) is True
 
 
-def test_build_codegraph_mcp_uses_project_path(tmp_path: Path) -> None:
+def test_build_codegraph_mcp_uses_project_cwd(tmp_path: Path) -> None:
     server = build_codegraph_mcp(tmp_path, command="/usr/bin/codegraph", no_watch=True)
     assert server.command == "/usr/bin/codegraph"
-    assert server.args == ["serve", "--mcp", "--path", str(tmp_path.resolve()), "--no-watch"]
+    assert server.args == ["serve", "--mcp", "--no-watch"]
+    assert server.cwd == str(tmp_path.resolve())
 
 
 def test_prepare_mcp_servers_injects_codegraph(tmp_path: Path, monkeypatch) -> None:

@@ -69,10 +69,15 @@ def build_codegraph_mcp(
     command: str,
     no_watch: bool = False,
 ) -> StdioMcpServerConfig:
-    args = ["serve", "--mcp", "--path", str(project.resolve())]
+    """Start CodeGraph MCP in the project directory (no --path; uses agent cwd)."""
+    args = ["serve", "--mcp"]
     if no_watch:
         args.append("--no-watch")
-    return StdioMcpServerConfig(command=command, args=args)
+    return StdioMcpServerConfig(
+        command=command,
+        args=args,
+        cwd=str(project.resolve()),
+    )
 
 
 def prepare_mcp_servers(
@@ -107,8 +112,8 @@ def prepare_mcp_servers(
 
     if not is_index_initialized(project):
         warnings.append(
-            f"CodeGraph index not found under {project}/.codegraph/. "
-            f"Run: cursor-agent-sdk codegraph init --cwd {project}"
+            "CodeGraph index not found in this directory (.codegraph/). "
+            "From the project root, run: cursor-agent-sdk codegraph init"
         )
 
     return merged, warnings
