@@ -7,7 +7,6 @@ from cursor_agent_sdk.session import (
     SESSION_VERSION,
     ProjectSession,
     SessionCwdMismatchError,
-    append_chat_log,
     chat_log_path,
     clear_session,
     home_dir,
@@ -96,19 +95,10 @@ def test_migrate_legacy_repo_dir(isolated_home: Path, tmp_path: Path) -> None:
     assert not legacy.exists()
 
 
-def test_chat_log(isolated_home: Path, tmp_path: Path) -> None:
-    append_chat_log(
-        tmp_path,
-        prompt="hello",
-        mode="plan",
-        status="finished",
-        agent_id="agent-1",
-    )
+def test_chat_log_path_under_store(isolated_home: Path, tmp_path: Path) -> None:
     log = chat_log_path(tmp_path)
-    assert log.is_file()
-    line = json.loads(log.read_text(encoding="utf-8").strip())
-    assert line["prompt"] == "hello"
-    assert line["status"] == "finished"
+    assert log.name == "chat.jsonl"
+    assert log.parent.name == project_key(tmp_path)
 
 
 def test_list_projects(isolated_home: Path, tmp_path: Path) -> None:

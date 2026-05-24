@@ -10,6 +10,7 @@ SUBCOMMANDS = (
     "resume",
     "session",
     "sessions",
+    "history",
     "projects",
     "clear",
     "completion",
@@ -50,7 +51,7 @@ _cursor_agent_sdk() {{
     fi
 
     case "${{words[1]}}" in
-        plan|ask|send|resume|chat|session|sessions|clear|completion)
+        plan|ask|send|resume|chat|session|sessions|history|clear|completion)
             if [[ "$cur" == -* ]]; then
                 local sub_opts="$global_opts $global_opts_extra --new --mode --start-mode"
                 COMPREPLY=( $(compgen -W "$sub_opts" -- "$cur") )
@@ -100,6 +101,14 @@ case $state in
                 ;;
             send)
                 _arguments $global_opts '--mode[plan or agent]:mode:(plan agent)'
+                ;;
+            history)
+                _arguments $global_opts \
+                    '--agent-id[Agent ID]' \
+                    '--run[Run ID]' \
+                    '--limit[Last N turns]' \
+                    '--local[chat.jsonl only]' \
+                    '--full[Full tool results]'
                 ;;
             chat)
                 _arguments $global_opts \\

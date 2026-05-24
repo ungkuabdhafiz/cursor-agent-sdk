@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from typing import Any
 
 from cursor_sdk import RunResult
@@ -19,6 +20,7 @@ def stream_run(
     show_meta: bool = False,
     json_mode: bool = False,
     verbose_tools: bool = False,
+    log_message: Callable[[Any], None] | None = None,
 ) -> bool:
     """Stream run messages. Returns True if assistant/thinking text was printed."""
     streamed_text = False
@@ -28,6 +30,9 @@ def stream_run(
         print(f"Run ID: {run.id}", file=sys.stderr)
 
     for message in run.messages():
+        if log_message is not None:
+            log_message(message)
+
         if json_mode:
             _emit_json_event(message)
             if message.type in ("assistant", "thinking"):
@@ -59,6 +64,11 @@ def stream_run(
 
     if streamed_text and not json_mode:
         print(flush=True)
+
+    if log_message is not None:
+        flush = getattr(log_message, "flush", None)
+        if callable(flush):
+            flush()
 
     return streamed_text
 

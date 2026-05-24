@@ -1,11 +1,11 @@
 """CLI and library for multi-turn Cursor SDK agent sessions."""
 
 from cursor_agent_sdk.config import ToolConfig, load_config, user_config_path
+from cursor_agent_sdk.chat_log import append_chat_log, append_chat_log_event
 from cursor_agent_sdk.session import (
     ProjectMeta,
     ProjectSession,
     SessionCwdMismatchError,
-    append_chat_log,
     chat_history_path,
     chat_log_path,
     clear_session,
@@ -29,6 +29,7 @@ __all__ = [
     "SessionCwdMismatchError",
     "ToolConfig",
     "append_chat_log",
+    "append_chat_log_event",
     "chat_history_path",
     "chat_log_path",
     "clear_session",

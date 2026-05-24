@@ -10,12 +10,16 @@ from typing import Literal
 from cursor_sdk import Agent, CursorAgentError, CursorClient, SendOptions
 
 from cursor_agent_sdk.chat_input import read_chat_input
+from cursor_agent_sdk.chat_log import (
+    log_run_outcome,
+    log_user_prompt,
+    make_message_logger,
+)
 from cursor_agent_sdk.config import ToolConfig, build_agent_options, require_api_key
 from cursor_agent_sdk.output import print_run_summary, stream_run
 from cursor_agent_sdk.session import (
     ProjectSession,
     SessionCwdMismatchError,
-    append_chat_log,
     chat_history_path,
     clear_session,
     list_sessions,
@@ -146,9 +150,26 @@ class AgentTool:
         send_mode = mode
         options = SendOptions(mode=send_mode) if send_mode else None
         run = self._agent.send(prompt, options)
+        run_id = run.id
+        agent_id = self._agent.agent_id
+
+        log_user_prompt(
+            self.cwd,
+            prompt=prompt,
+            run_id=run_id,
+            agent_id=agent_id,
+            mode=send_mode,
+        )
+        log_message = make_message_logger(
+            self.cwd,
+            run_id=run_id,
+            agent_id=agent_id,
+        )
 
         self._install_cancel_handler(run)
 
+        streamed_text = False
+        result = None
         try:
             streamed_text = stream_run(
                 run,
@@ -156,12 +177,25 @@ class AgentTool:
                 show_meta=self.show_meta,
                 json_mode=self.json_mode,
                 verbose_tools=self.show_meta,
+                log_message=log_message,
             )
             result = run.wait()
         except KeyboardInterrupt:
             self._cancel_run(run)
             if not self.json_mode:
                 print("\nRun cancelled.", file=sys.stderr)
+            try:
+                result = run.wait()
+            except Exception:
+                result = None
+            if result is not None:
+                log_run_outcome(
+                    self.cwd,
+                    run_id=run_id,
+                    agent_id=agent_id,
+                    result=result,
+                    streamed_text=streamed_text,
+                )
             return 3
         finally:
             self._restore_sigint()
@@ -179,12 +213,12 @@ class AgentTool:
             run_id=run.id,
         )
 
-        append_chat_log(
+        log_run_outcome(
             self.cwd,
-            prompt=prompt,
-            mode=send_mode,
-            status=result.status,
-            agent_id=self._agent.agent_id,
+            run_id=run_id,
+            agent_id=agent_id,
+            result=result,
+            streamed_text=streamed_text,
         )
 
         if result.status == "error":

@@ -21,6 +21,7 @@ from cursor_agent_sdk.session import (
     load_session,
     project_store_dir,
 )
+from cursor_agent_sdk.history import show_history
 from cursor_agent_sdk.tool import (
     AgentTool,
     clear_project_session,
@@ -183,6 +184,38 @@ def build_parser() -> argparse.ArgumentParser:
     clear = subparsers.add_parser("clear", help="Delete the saved session file for this project")
     global_arguments(clear)
 
+    history_cmd = subparsers.add_parser(
+        "history",
+        help="Show conversation history from the SDK agent store (or --local transcript)",
+    )
+    history_cmd.add_argument(
+        "--agent-id",
+        metavar="ID",
+        help="Agent ID to load (default: saved session for this project)",
+    )
+    history_cmd.add_argument(
+        "--run",
+        metavar="RUN_ID",
+        help="Show conversation for a single run instead of the full agent session",
+    )
+    history_cmd.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="Show only the last N turns or transcript lines",
+    )
+    history_cmd.add_argument(
+        "--local",
+        action="store_true",
+        help="Show chat.jsonl transcript only (no API / bridge required)",
+    )
+    history_cmd.add_argument(
+        "--full",
+        action="store_true",
+        help="Include full tool results in text output",
+    )
+    global_arguments(history_cmd)
+
     codegraph_cmd = subparsers.add_parser("codegraph", help="CodeGraph index utilities")
     codegraph_sub = codegraph_cmd.add_subparsers(dest="codegraph_command", required=True)
     codegraph_status = codegraph_sub.add_parser(
@@ -291,7 +324,10 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(run_init(cwd, config.codegraph))
         raise SystemExit(1)
 
-    if args.command != "projects":
+    needs_api_key = args.command != "projects" and not (
+        args.command == "history" and getattr(args, "local", False)
+    )
+    if needs_api_key:
         try:
             require_api_key()
         except RuntimeError as err:
@@ -307,6 +343,7 @@ def main(argv: list[str] | None = None) -> None:
         "projects",
         "sessions",
         "session",
+        "history",
         "clear",
         "completion",
     ):
@@ -372,6 +409,20 @@ def main(argv: list[str] | None = None) -> None:
 
         if args.command == "clear":
             raise SystemExit(clear_project_session(cwd, session_name))
+
+        if args.command == "history":
+            code = show_history(
+                cwd,
+                config,
+                agent_id=getattr(args, "agent_id", None),
+                run_id=getattr(args, "run", None),
+                session_name=session_name,
+                limit=getattr(args, "limit", None),
+                json_mode=json_mode,
+                local_only=getattr(args, "local", False),
+                full_tools=getattr(args, "full", False),
+            )
+            raise SystemExit(code)
 
         with AgentTool(
             cwd,

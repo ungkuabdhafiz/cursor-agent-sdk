@@ -103,6 +103,7 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `projects` | List all projects with saved sessions (home store) |
 | `resume AGENT_ID [PROMPT]` | Resume a specific agent |
 | `clear` | Delete the saved session file |
+| `history` | Show SDK-stored conversation (thinking, tools, assistant) |
 | `codegraph status` | Show CodeGraph binary and index status for the current directory |
 | `codegraph init` | Run `codegraph init -i` in the target project |
 | `completion SHELL` | Print shell completion (`bash` or `zsh`) |
@@ -163,13 +164,48 @@ All session data lives under **`~/.cursor-agent-sdk/`** (like Cursor’s `~/.cur
         ├── meta.json        # project cwd and timestamps
         ├── session.json     # default session (agent id, mode, …)
         ├── sessions/        # named sessions (e.g. auth.json)
-        ├── history          # interactive chat readline history
-        └── chat.jsonl       # log of prompts and run status
+        ├── history          # readline input recall (user lines only)
+        └── chat.jsonl       # full transcript (user, thinking, tools, assistant, run)
 ```
 
 Repo-local `.cursor-agent-sdk/` or `.cursor-agent/` folders are **moved** into the home store on first use.
 
 Sessions include schema versioning, file locking, and cwd validation on resume.
+
+### Chat transcript (`chat.jsonl`)
+
+Each run appends one JSON object per line: your prompt, then agent events (one line per thinking block, one per assistant reply, tool calls with args/results), then a final `role: run` summary. Streaming chunks are merged so you don't get one line per token. Example:
+
+```json
+{"role":"user","run_id":"run-…","content":"Add OAuth","mode":"plan"}
+{"role":"agent","message_type":"thinking","content":"I'll scan auth…"}
+{"role":"agent","message_type":"tool_call","tool":"grep","status":"running","args":{"pattern":"auth"}}
+{"role":"agent","message_type":"assistant","content":"Here is the plan…"}
+{"role":"run","status":"finished","model":"composer-2.5 (fast=false)","duration_ms":12000}
+```
+
+The `history` file is only readline recall for typed input — not the full transcript.
+
+### View SDK conversation history
+
+The SDK stores the full session in its agent store (`sdk-agent-store/.../store.db`). Our `chat.jsonl` is an export; use `history` to read what the SDK actually has:
+
+```bash
+# Full session (thinking, tools, assistant) from the saved agent
+cursor-agent-sdk history
+
+# Last 3 turns only
+cursor-agent-sdk history --limit 3
+
+# JSON for scripts
+cursor-agent-sdk history --json
+
+# One run only
+cursor-agent-sdk history --run run-abc123
+
+# Local chat.jsonl export only (no API key)
+cursor-agent-sdk history --local
+```
 
 List every project you’ve used:
 

@@ -199,28 +199,6 @@ def save_session(cwd: Path, session: ProjectSession) -> None:
     _touch_project_meta(cwd, project_store_dir(cwd), project_key(cwd))
 
 
-def append_chat_log(
-    cwd: Path,
-    *,
-    prompt: str,
-    mode: str | None,
-    status: str,
-    agent_id: str | None = None,
-) -> None:
-    """Append one interaction line to the project chat log (JSONL)."""
-    path = chat_log_path(cwd)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    entry = {
-        "timestamp": _now(),
-        "prompt": prompt,
-        "mode": mode,
-        "status": status,
-        "agent_id": agent_id,
-    }
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
-
-
 def clear_session(cwd: Path, session_name: str = "default") -> bool:
     path = session_file(cwd, session_name)
     if not path.is_file():
