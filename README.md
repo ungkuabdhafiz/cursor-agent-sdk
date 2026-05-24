@@ -117,7 +117,7 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `--sandbox` / `--no-sandbox` | Enable or disable sandbox |
 | `--json` | NDJSON stream + final JSON result (for scripts/CI) |
 | `--no-tools` | Hide `[tool]` lines in output |
-| `--verbose` | Metadata on stderr; verbose tool args/results |
+| `--verbose` | Metadata on stderr; full tool `args`/`result` repr (default shows path/pattern/cmd) |
 | `--new` | Force a fresh SDK session (`plan` / `ask` / `chat`) |
 | `--mode plan\|agent` | Override mode for a `send` follow-up |
 

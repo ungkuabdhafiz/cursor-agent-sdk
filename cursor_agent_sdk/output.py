@@ -9,6 +9,7 @@ from typing import Any
 from cursor_sdk import RunResult
 
 from cursor_agent_sdk.model import format_model
+from cursor_agent_sdk.tool_display import format_tool_line
 
 
 def stream_run(
@@ -95,19 +96,26 @@ def print_run_summary(
 
 
 def _print_tool_call(message, seen: set[str], *, verbose: bool) -> bool:
-    if message.status == "running" and message.call_id in seen:
-        return False
-    seen.add(message.call_id)
-
     if verbose:
-        args_preview = _truncate(repr(message.args), 200)
-        status = message.status
-        print(f"\n[tool] {message.name} ({status}) args={args_preview}", flush=True)
-        if message.status in ("completed", "error") and message.result is not None:
+        if message.status == "running":
+            if message.call_id in seen:
+                return False
+            seen.add(message.call_id)
+            args_preview = _truncate(repr(message.args), 200)
+            print(
+                f"\n[tool] {message.name} ({message.status}) args={args_preview}",
+                flush=True,
+            )
+        elif message.status in ("completed", "error") and message.result is not None:
             result_preview = _truncate(repr(message.result), 200)
             print(f"[tool] {message.name} result={result_preview}", flush=True)
-    else:
-        print(f"\n[tool] {message.name}", flush=True)
+        return False
+
+    if message.call_id in seen or message.status != "running":
+        return False
+    seen.add(message.call_id)
+    line = format_tool_line(message.name, message.args, status=message.status)
+    print(f"\n{line}", flush=True)
     return False
 
 
