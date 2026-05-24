@@ -21,4 +21,4 @@ def test_rate_limit_hint() -> None:
 
 def test_format_error() -> None:
     err = CursorAgentError("oops", code="test")
-    assert format_error(err) == "oops"
+    assert format_error(err) == "oops (code: test)"

@@ -16,7 +16,13 @@ fast = false
 setting_sources = ["project", "user"]
 sandbox_enabled = false
 
-# Optional MCP servers
+# CodeGraph MCP (enabled by default; auto-injects for --cwd)
+[codegraph]
+enabled = true
+# command = "/full/path/to/codegraph"  # optional; defaults to PATH / CODEGRAPH_BIN
+# no_watch = false
+
+# Optional additional MCP servers (name "codegraph" overrides auto-injection)
 # [mcp_servers.filesystem]
 # type = "stdio"
 # command = "npx"

@@ -12,6 +12,7 @@ from typing import Any, Literal
 from cursor_sdk import HttpMcpServerConfig, SandboxOptions, StdioMcpServerConfig
 from cursor_sdk.types import McpServerConfig, SettingSource
 
+from cursor_agent_sdk.codegraph import CodeGraphSettings, emit_warnings, prepare_mcp_servers
 from cursor_agent_sdk.session import home_dir
 
 SettingSourceInput = SettingSource | str
@@ -48,6 +49,7 @@ class ToolConfig:
     setting_sources: tuple[SettingSourceInput, ...] = ()
     sandbox_enabled: bool | None = None
     mcp_servers: dict[str, McpServerConfig] = field(default_factory=dict)
+    codegraph: CodeGraphSettings = field(default_factory=CodeGraphSettings)
 
     def merge_cli(
         self,
@@ -59,10 +61,20 @@ class ToolConfig:
         session_name: str | None = None,
         rules: SequenceSettingSources | None = None,
         sandbox: bool | None = None,
+        codegraph: bool | None = None,
     ) -> ToolConfig:
         sources = self.setting_sources
         if rules is not None:
             sources = tuple(rules)
+
+        codegraph_settings = self.codegraph
+        if codegraph is not None:
+            codegraph_settings = CodeGraphSettings(
+                enabled=codegraph,
+                command=self.codegraph.command,
+                no_watch=self.codegraph.no_watch,
+            )
+
         return ToolConfig(
             model_id=model_id or self.model_id,
             fast=fast if fast is not None else self.fast,
@@ -73,6 +85,7 @@ class ToolConfig:
             setting_sources=sources,
             sandbox_enabled=sandbox if sandbox is not None else self.sandbox_enabled,
             mcp_servers=dict(self.mcp_servers),
+            codegraph=codegraph_settings,
         )
 
 
@@ -144,6 +157,9 @@ def _config_from_mapping(data: Mapping[str, Any]) -> ToolConfig:
     sandbox_enabled = _optional_bool(local_section.get("sandbox_enabled"))
 
     mcp_servers = _parse_mcp_servers(data.get("mcp_servers"))
+    codegraph = CodeGraphSettings.from_mapping(
+        data.get("codegraph") if isinstance(data.get("codegraph"), dict) else None
+    )
 
     return ToolConfig(
         model_id=model_id,
@@ -155,6 +171,7 @@ def _config_from_mapping(data: Mapping[str, Any]) -> ToolConfig:
         setting_sources=setting_sources,
         sandbox_enabled=sandbox_enabled,
         mcp_servers=mcp_servers,
+        codegraph=codegraph,
     )
 
 
@@ -163,6 +180,27 @@ def _apply_env(config: ToolConfig) -> ToolConfig:
     fast = config.fast
     if os.environ.get("COMPOSER_FAST") is not None:
         fast = os.environ.get("COMPOSER_FAST", "false").lower() in ("1", "true", "yes")
+
+    codegraph = config.codegraph
+    if os.environ.get("CODEGRAPH_ENABLED") is not None:
+        enabled = os.environ.get("CODEGRAPH_ENABLED", "true").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        codegraph = CodeGraphSettings(
+            enabled=enabled,
+            command=config.codegraph.command or os.environ.get("CODEGRAPH_BIN") or None,
+            no_watch=config.codegraph.no_watch,
+        )
+    elif os.environ.get("CODEGRAPH_BIN"):
+        codegraph = CodeGraphSettings(
+            enabled=config.codegraph.enabled,
+            command=os.environ.get("CODEGRAPH_BIN"),
+            no_watch=config.codegraph.no_watch,
+        )
+
     return ToolConfig(
         model_id=model_id,
         fast=fast,
@@ -173,6 +211,7 @@ def _apply_env(config: ToolConfig) -> ToolConfig:
         setting_sources=config.setting_sources,
         sandbox_enabled=config.sandbox_enabled,
         mcp_servers=config.mcp_servers,
+        codegraph=codegraph,
     )
 
 
@@ -243,11 +282,14 @@ def build_agent_options(cwd: Path, config: ToolConfig, *, mode: str | None = Non
 
     from cursor_agent_sdk.model import build_model
 
+    mcp_servers, warnings = prepare_mcp_servers(cwd, config.mcp_servers, config.codegraph)
+    emit_warnings(warnings)
+
     return AgentOptions(
         model=build_model(config),
         api_key=resolve_api_key(allow_missing=True),
         local=build_local_options(cwd, config),
-        mcp_servers=config.mcp_servers or None,
+        mcp_servers=mcp_servers or None,
         mode=mode,  # type: ignore[arg-type]
     )
 

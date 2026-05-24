@@ -103,6 +103,8 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `projects` | List all projects with saved sessions (home store) |
 | `resume AGENT_ID [PROMPT]` | Resume a specific agent |
 | `clear` | Delete the saved session file |
+| `codegraph status` | Show CodeGraph binary and index status for `--cwd` |
+| `codegraph init` | Run `codegraph init -i` in the target project |
 | `completion SHELL` | Print shell completion (`bash` or `zsh`) |
 
 ### Flags
@@ -118,6 +120,8 @@ Multiline input — paste your text, then type a lone '.' on its own line to sen
 | `--json` | NDJSON stream + final JSON result (for scripts/CI) |
 | `--no-tools` | Hide `[tool]` lines in output |
 | `--verbose` | Metadata on stderr; full tool `args`/`result` repr (default shows path/pattern/cmd) |
+| `--codegraph` | Enable CodeGraph MCP for `--cwd` (default) |
+| `--no-codegraph` | Disable automatic CodeGraph MCP injection |
 | `--new` | Force a fresh SDK session (`plan` / `ask` / `chat`) |
 | `--mode plan\|agent` | Override mode for a `send` follow-up |
 
@@ -166,6 +170,46 @@ See [examples/config.toml.example](examples/config.toml.example).
 | `CURSOR_API_KEY` | Required. Your Cursor API key. |
 | `CURSOR_AGENT_MODEL` | Default model id |
 | `COMPOSER_FAST` | Set to `true` to default to fast tier |
+| `CODEGRAPH_ENABLED` | Set to `false` to disable CodeGraph MCP injection |
+| `CODEGRAPH_BIN` | Full path to the `codegraph` binary |
+
+## CodeGraph
+
+CodeGraph is **enabled by default**. The CLI injects a stdio MCP server pointed at `--cwd`:
+
+```text
+codegraph serve --mcp --path <your-project>
+```
+
+No manual `.cursor/mcp.json` or `${workspaceFolder}` setup is required when using `cursor-agent-sdk`.
+
+```bash
+# Check binary + index for a project
+cursor-agent-sdk codegraph status --cwd ~/projects/my-app
+
+# Build the index once per repo
+cursor-agent-sdk codegraph init --cwd ~/projects/my-app
+
+# Agent runs with codegraph_* tools automatically
+cursor-agent-sdk --cwd ~/projects/my-app plan "Where is auth handled?"
+```
+
+Disable per run:
+
+```bash
+cursor-agent-sdk --no-codegraph ask "quick question without the index"
+```
+
+Configure in `~/.cursor-agent-sdk/config.toml`:
+
+```toml
+[codegraph]
+enabled = true
+command = "/home/you/.nvm/versions/node/v24.11.1/bin/codegraph"
+no_watch = false
+```
+
+If you define `[mcp_servers.codegraph]` yourself, that entry takes precedence over auto-injection.
 
 ## JSON output
 

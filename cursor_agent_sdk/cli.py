@@ -9,6 +9,7 @@ from pathlib import Path
 from cursor_sdk import CursorAgentError
 
 from cursor_agent_sdk import __version__
+from cursor_agent_sdk.codegraph import inspect_status, run_init
 from cursor_agent_sdk.completion import completion_script
 from cursor_agent_sdk.config import ToolConfig, load_config, require_api_key
 from cursor_agent_sdk.errors import format_error, format_error_hint
@@ -88,6 +89,18 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Emit NDJSON events during the run and a final JSON result",
     )
+    codegraph_group = parser.add_mutually_exclusive_group()
+    codegraph_group.add_argument(
+        "--codegraph",
+        action="store_true",
+        default=None,
+        help="Enable CodeGraph MCP for the target project (default)",
+    )
+    codegraph_group.add_argument(
+        "--no-codegraph",
+        action="store_true",
+        help="Disable automatic CodeGraph MCP injection",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -161,6 +174,19 @@ def build_parser() -> argparse.ArgumentParser:
     clear = subparsers.add_parser("clear", help="Delete the saved session file for this project")
     global_arguments(clear)
 
+    codegraph_cmd = subparsers.add_parser("codegraph", help="CodeGraph index utilities")
+    codegraph_sub = codegraph_cmd.add_subparsers(dest="codegraph_command", required=True)
+    codegraph_status = codegraph_sub.add_parser(
+        "status",
+        help="Show CodeGraph binary and index status for --cwd",
+    )
+    global_arguments(codegraph_status)
+    codegraph_init = codegraph_sub.add_parser(
+        "init",
+        help="Run codegraph init -i in the target project",
+    )
+    global_arguments(codegraph_init)
+
     completion = subparsers.add_parser("completion", help="Print shell completion script")
     completion.add_argument("shell", choices=("bash", "zsh"), help="Shell type")
 
@@ -190,6 +216,12 @@ def resolve_config(args: argparse.Namespace, cwd: Path) -> ToolConfig:
     show_tools = None if not args.no_tools else False
     show_meta = True if args.verbose else None
 
+    codegraph = None
+    if getattr(args, "no_codegraph", False):
+        codegraph = False
+    elif getattr(args, "codegraph", None):
+        codegraph = True
+
     return config.merge_cli(
         model_id=args.model,
         fast=fast,
@@ -198,6 +230,7 @@ def resolve_config(args: argparse.Namespace, cwd: Path) -> ToolConfig:
         session_name=args.session,
         rules=args.rules,
         sandbox=sandbox,
+        codegraph=codegraph,
     )
 
 
@@ -220,6 +253,19 @@ def main(argv: list[str] | None = None) -> None:
     cwd = args.cwd.resolve()
     if not cwd.is_dir():
         print(f"error: --cwd is not a directory: {cwd}", file=sys.stderr)
+        raise SystemExit(1)
+
+    if args.command == "codegraph":
+        config = resolve_config(args, cwd)
+        if args.codegraph_command == "status":
+            status = inspect_status(cwd, config.codegraph)
+            print(f"Project: {status.project}")
+            print(f"Enabled: {status.enabled}")
+            print(f"Binary: {status.command or 'not found'}")
+            print(f"Index: {'initialized' if status.index_initialized else 'missing'}")
+            raise SystemExit(0 if status.command else 1)
+        if args.codegraph_command == "init":
+            raise SystemExit(run_init(cwd, config.codegraph))
         raise SystemExit(1)
 
     if args.command != "projects":

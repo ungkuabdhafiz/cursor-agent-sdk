@@ -30,3 +30,16 @@ def test_invalid_cwd(tmp_path: Path, capsys) -> None:
         main(["session", "--cwd", str(missing)])
     assert exc.value.code == 1
     assert "not a directory" in capsys.readouterr().err
+
+
+def test_codegraph_status_command(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        "cursor_agent_sdk.codegraph.resolve_codegraph_command",
+        lambda override=None: "/usr/bin/codegraph",
+    )
+    with pytest.raises(SystemExit) as exc:
+        main(["codegraph", "status", "--cwd", str(tmp_path)])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Enabled: True" in out
+    assert "/usr/bin/codegraph" in out
