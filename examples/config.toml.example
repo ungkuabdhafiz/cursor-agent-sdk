@@ -1,0 +1,23 @@
+# Copy to .cursor-agent/config.toml in your project, or
+# ~/.config/cursor-agent-sdk/config.toml for global defaults.
+
+[defaults]
+fast = false
+model = "composer-2.5"
+show_tools = true
+session_name = "default"
+mode = "plan"  # default mode for `chat --start-mode`
+
+[model]
+id = "composer-2.5"
+fast = false
+
+[local]
+setting_sources = ["project", "user"]
+sandbox_enabled = false
+
+# Optional MCP servers
+# [mcp_servers.filesystem]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]

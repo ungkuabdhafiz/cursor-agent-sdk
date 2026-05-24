@@ -1,0 +1,45 @@
+# Example GitHub Actions workflow using JSON output.
+# Save as .github/workflows/cursor-agent-sdk.yml in your repo.
+#
+# Requires repository secret: CURSOR_API_KEY
+
+name: Cursor agent task
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Task for the agent
+        required: true
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cursor-agent-sdk
+        run: pip install cursor-agent-sdk
+
+      - name: Run agent
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          cursor-agent-sdk ask --json "${{ github.event.inputs.prompt }}" > result.json
+          cat result.json
+
+      - name: Check status
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          with open("result.json") as f:
+              lines = [ln for ln in f if ln.strip()]
+          result = json.loads(lines[-1])
+          if result.get("status") != "finished":
+              sys.exit(1)
+          PY

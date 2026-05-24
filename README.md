@@ -1,6 +1,6 @@
 # cursor-agent-sdk
 
-A CLI for running multi-turn [Cursor SDK](https://cursor.com/docs/sdk/python) agents against any project on your machine. Delegate coding tasks programmatically — plan a feature, review the proposal, then ask the agent to implement it — without using the IDE chat.
+A CLI and Python library for running multi-turn [Cursor SDK](https://cursor.com/docs/sdk/python) agents against any project on your machine. Delegate coding tasks programmatically — plan a feature, review the proposal, then ask the agent to implement it — without using the IDE chat.
 
 Runs bill through the **SDK** (not the IDE agent), so they qualify for SDK Composer pricing and promos.
 
@@ -17,7 +17,7 @@ git clone <this-repo>
 cd cursor-sdk
 
 python -m venv .venv
-uv pip install -e . --python .venv/bin/python
+uv pip install -e ".[dev]" --python .venv/bin/python
 ```
 
 Make the command available globally (pick one):
@@ -36,6 +36,12 @@ Verify:
 cursor-agent-sdk --help
 ```
 
+From PyPI (when published):
+
+```bash
+pip install cursor-agent-sdk
+```
+
 ## Quick start
 
 From any project directory:
@@ -51,9 +57,12 @@ cursor-agent-sdk send --mode agent "Implement the plan you proposed"
 
 # 3. Keep iterating on the same session
 cursor-agent-sdk send "Add tests for the auth middleware"
+
+# Read prompt from stdin
+echo "Refactor the auth module" | cursor-agent-sdk ask -
 ```
 
-Or use interactive chat:
+Or use interactive chat (resumes an existing session when present):
 
 ```bash
 cursor-agent-sdk chat
@@ -64,6 +73,7 @@ cursor-agent-sdk> /plan
 cursor-agent-sdk> I want to implement feature A
 cursor-agent-sdk> /agent
 cursor-agent-sdk> Go ahead and implement it
+cursor-agent-sdk> /clear
 cursor-agent-sdk> /quit
 ```
 
@@ -71,80 +81,125 @@ cursor-agent-sdk> /quit
 
 | Command | Description |
 |---------|-------------|
-| `plan PROMPT` | Start or continue a session in **plan** mode |
+| `plan PROMPT` | Start or continue a session in **plan** mode (`-` = stdin) |
 | `ask PROMPT` | Start or continue a session in **agent** mode (makes edits) |
 | `send PROMPT` | Send a follow-up in the saved session |
-| `chat` | Interactive multi-turn REPL |
+| `chat` | Interactive multi-turn REPL (resumes saved session) |
 | `session` | Show the saved agent ID for this project |
+| `sessions` | List named sessions |
 | `resume AGENT_ID [PROMPT]` | Resume a specific agent |
 | `clear` | Delete the saved session file |
+| `completion SHELL` | Print shell completion (`bash` or `zsh`) |
 
 ### Flags
 
 | Flag | Description |
 |------|-------------|
 | `--cwd PATH` | Target project directory (default: current directory) |
-| `--fast` | Use Composer fast tier (default: standard via `fast=false`) |
+| `--session NAME` | Named session (`.cursor-agent/sessions/NAME.json`) |
+| `--model ID` | Model id (default: `composer-2.5`) |
+| `--fast` / `--no-fast` | Composer fast vs standard tier |
+| `--rules SOURCE ...` | Setting sources: `project`, `user`, `team`, etc. |
+| `--sandbox` / `--no-sandbox` | Enable or disable sandbox |
+| `--json` | NDJSON stream + final JSON result (for scripts/CI) |
 | `--no-tools` | Hide `[tool]` lines in output |
-| `--verbose` | Print agent/run metadata on stderr |
-| `--new` | Force a fresh SDK session (`plan` / `ask` only) |
+| `--verbose` | Metadata on stderr; verbose tool args/results |
+| `--new` | Force a fresh SDK session (`plan` / `ask` / `chat`) |
 | `--mode plan\|agent` | Override mode for a `send` follow-up |
 
 ## Multi-turn sessions
 
-Each project gets a session file at `.cursor-agent/session.json` containing the agent ID. Follow-up commands resume that agent so the SDK keeps full conversation context across runs.
+Each project stores session state under `.cursor-agent/`:
+
+- Default session: `.cursor-agent/session.json`
+- Named sessions: `.cursor-agent/sessions/NAME.json`
+
+Sessions include a schema `version`, file locking on read/write, and cwd validation on resume.
 
 ```bash
-cursor-agent-sdk --cwd ~/projects/my-app plan "Add rate limiting"
-cursor-agent-sdk --cwd ~/projects/my-app send --mode agent "Implement it"
+cursor-agent-sdk --cwd ~/projects/my-app --session auth plan "Add login"
+cursor-agent-sdk --cwd ~/projects/my-app --session auth send --mode agent "Implement it"
 ```
 
-This is different from the Cursor IDE agent: these runs go through the SDK runtime and are tagged as SDK usage in your [dashboard](https://cursor.com/dashboard/usage).
+## Configuration
 
-## Model tier
+Config is merged from (later overrides earlier):
 
-By default the tool requests **Composer 2.5 standard** tier:
+1. `~/.config/cursor-agent-sdk/config.toml` (user defaults)
+2. `.cursor-agent/config.toml` in the project (per-repo overrides)
 
-```python
-ModelSelection(id="composer-2.5", params=[{"id": "fast", "value": "false"}])
-```
-
-Use `--fast` or set `COMPOSER_FAST=true` for the fast tier.
-
-## Environment variables
+See [examples/config.toml.example](examples/config.toml.example).
 
 | Variable | Description |
 |----------|-------------|
 | `CURSOR_API_KEY` | Required. Your Cursor API key. |
-| `COMPOSER_FAST` | Set to `true` to default to fast tier. |
+| `CURSOR_AGENT_MODEL` | Default model id |
+| `COMPOSER_FAST` | Set to `true` to default to fast tier |
+
+## JSON output
+
+For CI and scripting:
+
+```bash
+cursor-agent-sdk ask --json "fix lint errors" | tee run.ndjson
+```
+
+Streams NDJSON events (`assistant`, `tool_call`, …) and ends with a `{"type":"result",...}` line.
+
+## Shell completion
+
+```bash
+# bash
+eval "$(cursor-agent-sdk completion bash)"
+
+# zsh
+eval "$(cursor-agent-sdk completion zsh)"
+```
+
+## Python API
+
+```python
+from pathlib import Path
+from cursor_agent_sdk import AgentTool, ToolConfig, load_config
+
+config = load_config(Path("/path/to/project"))
+with AgentTool(Path("/path/to/project"), config) as tool:
+    tool.open_new(mode="plan")
+    tool.send("Design a caching layer")
+```
+
+## Examples
+
+- [examples/Makefile](examples/Makefile) — plan → implement workflow
+- [examples/github-action.yml](examples/github-action.yml) — CI with `--json`
+- [examples/config.toml.example](examples/config.toml.example) — config template
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+ruff check cursor_agent_sdk tests
+pytest
+```
 
 ## Project layout
 
 ```
-cursor-sdk/
-├── cursor_agent_sdk/   # Python package
+cursor-agent-sdk/
+├── cursor_agent_sdk/
 │   ├── cli.py          # Argument parsing
-│   ├── tool.py         # Agent create / resume / send
-│   ├── session.py      # Per-project session persistence
-│   ├── output.py       # Streaming output
-│   └── model.py        # Composer model selection
-├── pyproject.toml
-└── main.py             # Thin entry point
+│   ├── tool.py         # Agent create / resume / send / chat
+│   ├── session.py      # Persistence, locking, named sessions
+│   ├── config.py       # TOML + env configuration
+│   ├── output.py       # Streaming and JSON output
+│   ├── errors.py       # Actionable error hints
+│   ├── completion.py   # Shell completion scripts
+│   └── model.py        # Model selection
+├── tests/
+├── examples/
+└── pyproject.toml
 ```
-
-## Chat commands
-
-Inside `cursor-agent-sdk chat`:
-
-| Command | Action |
-|---------|--------|
-| `/plan` | Switch next message to plan mode |
-| `/agent` | Switch next message to agent mode |
-| `/new` | Start a fresh SDK session |
-| `/session` | Show saved session info |
-| `/help` | Show help |
-| `/quit` | Exit |
 
 ## License
 
-MIT (or your chosen license — update as needed)
+MIT — see [LICENSE](LICENSE).
