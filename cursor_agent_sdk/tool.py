@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from cursor_sdk import Agent, CursorAgentError, SendOptions
+from cursor_sdk import Agent, CursorAgentError, CursorClient, SendOptions
 
-from cursor_agent_sdk.config import ToolConfig, build_agent_options
+from cursor_agent_sdk.config import ToolConfig, build_agent_options, require_api_key
 from cursor_agent_sdk.output import print_run_summary, stream_run
 from cursor_agent_sdk.session import (
     ProjectSession,
@@ -52,6 +52,7 @@ class AgentTool:
         self.show_tools = self.config.show_tools
         self.show_meta = self.config.show_meta
         self._agent: Agent | None = None
+        self._client: CursorClient | None = None
         self._owns_agent = False
         self._previous_sigint = None
 
@@ -61,10 +62,22 @@ class AgentTool:
 
     def close(self) -> None:
         self._restore_sigint()
+        self._close_agent()
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    def _close_agent(self) -> None:
         if self._agent is not None and self._owns_agent:
             self._agent.close()
         self._agent = None
         self._owns_agent = False
+
+    def _ensure_client(self) -> CursorClient:
+        if self._client is None:
+            require_api_key()
+            self._client = CursorClient.launch_bridge(workspace=str(self.cwd))
+        return self._client
 
     def __enter__(self) -> AgentTool:
         return self
@@ -73,8 +86,12 @@ class AgentTool:
         self.close()
 
     def open_new(self, *, mode: Mode = "agent") -> Agent:
-        self.close()
-        self._agent = Agent.create(build_agent_options(self.cwd, self.config, mode=mode))
+        self._close_agent()
+        client = self._ensure_client()
+        self._agent = Agent.create(
+            build_agent_options(self.cwd, self.config, mode=mode),
+            client=client,
+        )
         self._owns_agent = True
         session = ProjectSession.create(
             agent_id=self._agent.agent_id,
@@ -100,9 +117,10 @@ class AgentTool:
         if session is not None:
             validate_session_cwd(session, self.cwd)
 
-        self.close()
+        self._close_agent()
+        client = self._ensure_client()
         options = build_agent_options(self.cwd, self.config)
-        self._agent = Agent.resume(target_id, options)
+        self._agent = Agent.resume(target_id, options, client=client)
         self._owns_agent = True
 
         if session is None or session.agent_id != target_id:

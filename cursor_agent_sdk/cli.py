@@ -10,7 +10,7 @@ from cursor_sdk import CursorAgentError
 
 from cursor_agent_sdk import __version__
 from cursor_agent_sdk.completion import completion_script
-from cursor_agent_sdk.config import ToolConfig, load_config
+from cursor_agent_sdk.config import ToolConfig, load_config, require_api_key
 from cursor_agent_sdk.errors import format_error, format_error_hint
 from cursor_agent_sdk.session import (
     SessionCwdMismatchError,
@@ -222,6 +222,13 @@ def main(argv: list[str] | None = None) -> None:
         print(f"error: --cwd is not a directory: {cwd}", file=sys.stderr)
         raise SystemExit(1)
 
+    if args.command != "projects":
+        try:
+            require_api_key()
+        except RuntimeError as err:
+            print(f"error: {err}", file=sys.stderr)
+            raise SystemExit(1)
+
     config = resolve_config(args, cwd)
     fast = resolve_fast_flag(args, config)
     json_mode = bool(args.json)
@@ -331,7 +338,7 @@ def main(argv: list[str] | None = None) -> None:
                 )
                 raise SystemExit(0)
 
-    except (CursorAgentError, SessionCwdMismatchError, ValueError) as err:
+    except (CursorAgentError, SessionCwdMismatchError, ValueError, RuntimeError) as err:
         print(f"error: {format_error(err)}", file=sys.stderr)
         hint = format_error_hint(err)
         if hint:

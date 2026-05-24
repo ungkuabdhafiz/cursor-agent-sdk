@@ -5,9 +5,11 @@ from __future__ import annotations
 from cursor_sdk import (
     AgentBusyError,
     AuthenticationError,
+    ConfigurationError,
     CursorAgentError,
     CursorSDKError,
     IntegrationNotConnectedError,
+    InternalServerError,
     NetworkError,
     NotFoundError,
     RateLimitError,
@@ -28,10 +30,21 @@ def format_error_hint(err: BaseException) -> str | None:
 
 
 def _format_cursor_error(err: CursorAgentError) -> str:
-    return err.message
+    parts = [err.message]
+    if err.code and err.message.lower() != err.code.replace("_", " "):
+        parts.append(f"(code: {err.code})")
+    if err.status:
+        parts.append(f"(HTTP {err.status})")
+    return " ".join(parts)
 
 
 def _hint_for_cursor_error(err: CursorAgentError) -> str | None:
+    if isinstance(err, ConfigurationError) and err.code == "missing_api_key":
+        return (
+            "Set CURSOR_API_KEY from https://cursor.com/dashboard/integrations\n"
+            '  export CURSOR_API_KEY="cursor_..."'
+        )
+
     if isinstance(err, UnknownAgentError) or (
         isinstance(err, NotFoundError) and getattr(err, "code", "") == "missing_session"
     ):
@@ -72,6 +85,14 @@ def _hint_for_cursor_error(err: CursorAgentError) -> str | None:
         if err.help_url:
             return f"Connect integration ({err.provider}): {err.help_url}"
         return "Connect the required integration in your Cursor dashboard."
+
+    if isinstance(err, InternalServerError):
+        return (
+            "The Cursor SDK bridge hit an internal error. Try a fresh session:\n"
+            "  cursor-agent-sdk chat --new\n"
+            "  cursor-agent-sdk clear && cursor-agent-sdk chat\n"
+            "If it keeps failing, wait a minute and retry."
+        )
 
     if isinstance(err, NetworkError):
         return "Check your network connection and that the Cursor SDK bridge is running."

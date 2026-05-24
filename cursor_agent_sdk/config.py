@@ -245,7 +245,27 @@ def build_agent_options(cwd: Path, config: ToolConfig, *, mode: str | None = Non
 
     return AgentOptions(
         model=build_model(config),
+        api_key=resolve_api_key(allow_missing=True),
         local=build_local_options(cwd, config),
         mcp_servers=config.mcp_servers or None,
         mode=mode,  # type: ignore[arg-type]
     )
+
+
+def resolve_api_key(*, allow_missing: bool = False) -> str | None:
+    key = os.environ.get("CURSOR_API_KEY", "").strip()
+    if key:
+        return key
+    if allow_missing:
+        return None
+    raise RuntimeError(
+        "CURSOR_API_KEY is not set. Create a key at "
+        "https://cursor.com/dashboard/integrations and run:\n"
+        '  export CURSOR_API_KEY="cursor_..."'
+    )
+
+
+def require_api_key() -> str:
+    key = resolve_api_key(allow_missing=False)
+    assert key is not None
+    return key

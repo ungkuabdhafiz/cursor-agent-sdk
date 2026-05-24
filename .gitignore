@@ -6,3 +6,5 @@ dist/
 build/
 .cursor-agent-sdk/
 .cursor-agent/
+.codegraph
+.cursor
