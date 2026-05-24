@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cursor-agent-sdk-tool"
+version = "0.1.0"
+description = "CLI to delegate coding tasks to Cursor SDK agents from any project"
+requires-python = ">=3.10"
+dependencies = [
+    "cursor-sdk>=0.1.5",
+]
+
+[project.scripts]
+cursor-agent-sdk = "cursor_agent_sdk.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cursor_agent_sdk"]
