@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cursor-agent-sdk"
-version = "0.2.0"
+version = "0.2.3"
 description = "CLI and library for multi-turn Cursor SDK agent sessions in any project"
 readme = "README.md"
 license = "MIT"

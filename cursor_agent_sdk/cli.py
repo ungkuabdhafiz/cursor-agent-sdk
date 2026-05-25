@@ -13,7 +13,7 @@ from cursor_agent_sdk.codegraph import inspect_status, run_init
 from cursor_agent_sdk.completion import completion_script
 from cursor_agent_sdk.config import ToolConfig, load_config, require_api_key
 from cursor_agent_sdk.lean import apply_lean, emit_lean_banner, warn_lean_session_resume
-from cursor_agent_sdk.errors import format_error, format_error_hint
+from cursor_agent_sdk.errors import format_error, format_error_hint, print_error_details
 from cursor_agent_sdk.session import (
     SessionCwdMismatchError,
     home_dir,
@@ -84,7 +84,10 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Print agent/run metadata and verbose tool details on stderr",
+        help=(
+            "Print agent/run metadata, verbose tool details, and extra "
+            "SDK error fields on stderr"
+        ),
     )
     parser.add_argument(
         "--json",
@@ -113,6 +116,26 @@ def global_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+_GLOBAL_PARSER = argparse.ArgumentParser(add_help=False)
+global_arguments(_GLOBAL_PARSER)
+
+
+def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse argv; global flags may appear before or after the subcommand."""
+    global_ns, remaining = _GLOBAL_PARSER.parse_known_args(argv)
+    args = build_parser().parse_args(remaining)
+    return _merge_global_args(args, global_ns)
+
+
+def _merge_global_args(
+    command_ns: argparse.Namespace,
+    global_ns: argparse.Namespace,
+) -> argparse.Namespace:
+    for key, value in vars(global_ns).items():
+        setattr(command_ns, key, value)
+    return command_ns
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cursor-agent-sdk",
@@ -126,17 +149,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    global_arguments(parser)
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     plan = subparsers.add_parser("plan", help="Start or continue a session in plan mode")
     plan.add_argument("prompt", help='Task description, or "-" to read from stdin')
-    global_arguments(plan)
 
     ask = subparsers.add_parser("ask", help="Start or continue a session in agent mode")
     ask.add_argument("prompt", help='Task description, or "-" to read from stdin')
-    global_arguments(ask)
 
     send = subparsers.add_parser("send", help="Send a follow-up in the saved session")
     send.add_argument("prompt", help='Follow-up instruction, or "-" for stdin')
@@ -145,7 +165,6 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("plan", "agent"),
         help="Override conversation mode for this message",
     )
-    global_arguments(send)
 
     chat = subparsers.add_parser("chat", help="Open an interactive multi-turn session")
     chat.add_argument(
@@ -159,7 +178,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Force a new SDK session instead of resuming",
     )
-    global_arguments(chat)
 
     resume = subparsers.add_parser(
         "resume",
@@ -167,22 +185,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     resume.add_argument("agent_id", help="Existing local agent ID")
     resume.add_argument("prompt", nargs="?", help='Optional prompt, or "-" for stdin')
-    global_arguments(resume)
 
     session_cmd = subparsers.add_parser("session", help="Show the saved session for this project")
-    global_arguments(session_cmd)
 
     sessions_cmd = subparsers.add_parser("sessions", help="List named sessions for this project")
-    global_arguments(sessions_cmd)
 
     projects_cmd = subparsers.add_parser(
         "projects",
         help="List all projects with saved sessions under ~/.cursor-agent-sdk",
     )
-    global_arguments(projects_cmd)
 
     clear = subparsers.add_parser("clear", help="Delete the saved session file for this project")
-    global_arguments(clear)
 
     history_cmd = subparsers.add_parser(
         "history",
@@ -214,20 +227,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Include full tool results in text output",
     )
-    global_arguments(history_cmd)
-
     codegraph_cmd = subparsers.add_parser("codegraph", help="CodeGraph index utilities")
     codegraph_sub = codegraph_cmd.add_subparsers(dest="codegraph_command", required=True)
     codegraph_status = codegraph_sub.add_parser(
         "status",
         help="Show CodeGraph binary and index status for --cwd",
     )
-    global_arguments(codegraph_status)
     codegraph_init = codegraph_sub.add_parser(
         "init",
         help="Run codegraph init -i in the target project",
     )
-    global_arguments(codegraph_init)
 
     completion = subparsers.add_parser("completion", help="Print shell completion script")
     completion.add_argument("shell", choices=("bash", "zsh"), help="Shell type")
@@ -299,8 +308,7 @@ def resolve_fast_flag(args: argparse.Namespace, config: ToolConfig) -> bool | No
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parse_cli_args(argv)
 
     if args.command == "completion":
         print(completion_script(args.shell))
@@ -493,6 +501,8 @@ def main(argv: list[str] | None = None) -> None:
 
     except (CursorAgentError, SessionCwdMismatchError, ValueError, RuntimeError) as err:
         print(f"error: {format_error(err)}", file=sys.stderr)
+        if args.verbose:
+            print_error_details(err)
         hint = format_error_hint(err)
         if hint:
             print(hint, file=sys.stderr)

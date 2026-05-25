@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from cursor_agent_sdk.cli import main
+from cursor_agent_sdk.cli import parse_cli_args, main
 
 
 def test_version(capsys) -> None:
@@ -10,6 +10,19 @@ def test_version(capsys) -> None:
         main(["--version"])
     assert exc.value.code == 0
     assert "cursor-agent-sdk" in capsys.readouterr().out
+
+
+def test_verbose_global_flag_position() -> None:
+    cases = (
+        (["--verbose", "--codegraph", "chat"], True),
+        (["--codegraph", "--verbose", "chat"], True),
+        (["chat", "--verbose"], False),
+    )
+    for argv, codegraph in cases:
+        args = parse_cli_args(argv)
+        assert args.verbose is True
+        assert args.command == "chat"
+        assert args.codegraph is (True if codegraph else None)
 
 
 def test_help_exits_zero() -> None:

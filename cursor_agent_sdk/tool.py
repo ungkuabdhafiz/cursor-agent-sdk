@@ -222,6 +222,10 @@ class AgentTool:
         )
 
         if result.status == "error":
+            if self.show_meta and not self.json_mode:
+                print("Run finished with error status.", file=sys.stderr)
+                if result.result:
+                    print(f"result: {result.result}", file=sys.stderr)
             return 2
         if result.status == "cancelled":
             return 3

@@ -19,7 +19,7 @@ from cursor_agent_sdk.session import (
 )
 from cursor_agent_sdk.tool import AgentTool
 
-__version__ = "0.2.0"
+__version__ = "0.2.3"
 
 __all__ = [
     "__version__",
